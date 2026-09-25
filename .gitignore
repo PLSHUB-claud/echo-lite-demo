@@ -1,0 +1,5 @@
+# Binarios e arquivos grandes desnecessarios no Git
+cloudflared.exe
+*.zip
+.env
+node_modules/

@@ -1,0 +1,9 @@
+# Para um tunnel nomeado, copia este arquivo para config.yml e preenche os teus dados.
+# A demo deve estar rodando em http://127.0.0.1:8787.
+tunnel: COLOCA_AQUI_O_ID_DO_TUNNEL
+credentials-file: C:\Users\TEU_UTILIZADOR\.cloudflared\COLOCA_AQUI_O_ID_DO_TUNNEL.json
+
+ingress:
+  - hostname: demo.teu-dominio.com
+    service: http://127.0.0.1:8787
+  - service: http_status:404

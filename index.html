@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0c10" />
+    <title>ECHO lite DEMO</title>
+    <link rel="icon" href="/assets/echo-skull.jpg" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar" aria-label="ECHO lite DEMO">
+        <div class="sidebar-head">
+          <div class="brand-lockup">
+            <div class="brand-mark"><img src="/assets/echo-skull.jpg" alt="ECHO" /></div>
+            <div>
+              <div class="brand-name">ECHO lite DEMO</div>
+            </div>
+          </div>
+          <button class="icon-button sidebar-close" id="sidebar-close" type="button" aria-label="Fechar painel"></button>
+        </div>
+
+        <button class="new-chat-button" id="new-chat" type="button"><span>Nova conversa</span></button>
+
+        <div class="chat-list" id="chat-list"></div>
+      </aside>
+
+      <div class="sidebar-scrim" id="sidebar-scrim"></div>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button class="icon-button" id="sidebar-toggle" type="button" aria-label="Abrir painel"></button>
+            <div class="topbar-divider"></div>
+            <div class="title-wrap">
+              <div class="eyebrow">ECHO lite DEMO</div>
+              <h1 id="chat-title">Nova conversa</h1>
+            </div>
+          </div>
+
+          <div class="topbar-actions" aria-hidden="true"></div>
+        </header>
+
+        <section class="messages" id="messages" aria-live="polite">
+          <div class="empty-state" id="empty-state">
+            <div class="empty-orbit">
+              <img src="/assets/echo-animation.gif" alt="ECHO" />
+            </div>
+            <div class="empty-copy">
+              <p class="empty-kicker">ECHO lite DEMO</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="composer-zone">
+          <div class="attachment-notice" id="attachment-notice" role="alert" aria-live="assertive"></div>
+          <div class="attachments-row is-hidden" id="attachment-row" aria-live="polite"></div>
+          <div class="drop-hint" id="drop-hint" aria-hidden="true"><span class="drop-hint-icon">+</span><span>Solte imagens para analisar</span></div>
+          <input id="file-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden />
+          <form class="composer" id="composer">
+            <div class="composer-main">
+              <button class="composer-tool" id="attach-file" type="button" aria-label="Adicionar imagem"></button>
+              <textarea id="message-input" rows="1" placeholder="Escreve uma mensagem…" aria-label="Mensagem"></textarea>
+              <button class="send-button" id="send-button" type="submit" aria-label="Enviar mensagem"></button>
+            </div>
+            <div class="composer-foot">
+              <span><kbd>Enter</kbd> enviar <span class="composer-foot-muted">·</span> <kbd>Shift + Enter</kbd> nova linha</span>
+              <span id="composer-status"></span>
+            </div>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="/app.js" defer></script>
+  </body>
+</html>
