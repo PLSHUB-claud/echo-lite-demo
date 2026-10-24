@@ -8,11 +8,11 @@ const ROOT = __dirname
 const PUBLIC_DIR = path.join(ROOT, "public")
 const PORT = Number(process.env.PORT || 8787)
 const HOST = process.env.HOST || "127.0.0.1"
-const LM_STUDIO_URL = (process.env.LM_STUDIO_URL || "http://127.0.0.1:8080").replace(/\/$/, "")
-const LM_STUDIO_TIMEOUT_MS = Number(process.env.LM_STUDIO_TIMEOUT_MS || 300000)
+const LM_STUDIO_URL = (process.env.LM_STUDIO_URL || "http://127.0.0.1:1234").replace(/\/$/, "")
+const LM_STUDIO_TIMEOUT_MS = Number(process.env.LM_STUDIO_TIMEOUT_MS || 180000)
 const MAX_BODY = 18 * 1024 * 1024
-const MAX_CONTEXT_TOKENS = 100000
-const MAX_OUTPUT_TOKENS = 32768
+const MAX_CONTEXT_TOKENS = 24000
+const MAX_OUTPUT_TOKENS = 2048
 const MAX_IMAGE_DATA_URL_CHARS = 8 * 1024 * 1024
 const SESSION_COOKIE = "echo_demo_session"
 const SESSION_TTL_MS = 60 * 60 * 1000
@@ -240,6 +240,8 @@ async function proxyChat(req, res) {
     Connection: "keep-alive",
     "X-Accel-Buffering": "no",
   })
+  if (typeof res.flushHeaders === "function") res.flushHeaders()
+  if (res.socket && typeof res.socket.setNoDelay === "function") res.socket.setNoDelay(true)
   const reader = upstream.body.getReader()
   let clientClosed = false
   res.on("close", () => { clientClosed = true; reader.cancel().catch(() => {}) })
@@ -248,6 +250,7 @@ async function proxyChat(req, res) {
       const { value, done } = await reader.read()
       if (done) break
       if (!res.write(Buffer.from(value)) && !clientClosed) await once(res, "drain")
+      if (typeof res.flush === "function") res.flush()
     }
   } catch {
     if (!clientClosed) res.write(`data: ${JSON.stringify({ error: "O stream foi interrompido." })}\n\n`)

@@ -1,5 +1,5 @@
 const STORAGE_KEY = "echo-lm-studio-demo-v1"
-const CONTEXT_TOKEN_LIMIT = 30000
+const CONTEXT_TOKEN_LIMIT = 24000
 const MAX_IMAGES_PER_MESSAGE = 4
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024
 const MAX_IMAGE_EDGE = 1600
@@ -210,6 +210,166 @@ function deleteChat(chatId) {
   showToast("Conversa apagada.")
 }
 
+// GLM ThinkingBubble & Silky Smooth Streaming Helpers
+function splitFragments(text, maxLen = 5) {
+  const frags = []
+  for (const part of String(text || "").split(/(\s+)/)) {
+    if (part === "") continue
+    if (/^\s+$/.test(part)) {
+      if (frags.length > 0) frags[frags.length - 1] += part
+      else frags.push(part)
+      continue
+    }
+    for (let i = 0; i < part.length; i += maxLen) {
+      frags.push(part.slice(i, i + maxLen))
+    }
+  }
+  return frags
+}
+
+function trailOpacity(charsFromEnd) {
+  let o
+  if (charsFromEnd <= 30) o = 0.95
+  else if (charsFromEnd >= 330) o = 0.35
+  else o = 0.95 - ((charsFromEnd - 30) / 300) * 0.6
+  return Math.round(o * 40) / 40
+}
+
+function parseThoughtAndAnswer(raw) {
+  if (typeof raw !== "string") return { thought: "", answer: "", isStillThinking: false }
+  
+  // Check for <think> tags (common in DeepSeek-R1, Qwen reasoning, etc.)
+  if (raw.includes("<think>")) {
+    if (raw.includes("</think>")) {
+      const match = raw.match(/<think>([\s\S]*?)<\/think>([\s\S]*)/i)
+      if (match) {
+        return {
+          thought: match[1].trim(),
+          answer: match[2].trimStart(),
+          isStillThinking: false,
+        }
+      }
+    } else {
+      const match = raw.match(/<think>([\s\S]*)/i)
+      return {
+        thought: match ? match[1].trim() : "",
+        answer: "",
+        isStillThinking: true,
+      }
+    }
+  }
+
+  return { thought: "", answer: raw, isStillThinking: false }
+}
+
+function createThinkingBubble(message, isGenerating) {
+  const isThinking = message.phase === "thinking"
+  const elapsed = message.thoughtSeconds || 0
+  const thoughtText = message.thought || ""
+  const isExpanded = message.isThinkingExpanded !== false && (isThinking || Boolean(message.isThinkingExpanded))
+
+  const container = document.createElement("div")
+  container.className = "thinking-container" + (isThinking ? " is-live" : "")
+  container.dataset.messageId = message.id
+
+  const header = document.createElement("div")
+  header.className = "thinking-header"
+  header.setAttribute("role", "button")
+  header.setAttribute("tabindex", "0")
+  header.setAttribute("aria-expanded", isExpanded ? "true" : "false")
+
+  const bulbSvg = `
+    <svg class="bulb-icon ${isThinking ? 'bulb-glow' : ''}" viewBox="0 0 24 24" fill="${isThinking ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="${isThinking ? '1.5' : '2'}">
+      <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-1 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/>
+      <path d="M9 18h6"/>
+      <path d="M10 22h4"/>
+    </svg>
+  `
+
+  const statusLabel = message.statusLabel || "Thinking..."
+  const finishedLabel = message.doneLabel || `Thought for ${elapsed}s`
+
+  const labelHtml = isThinking
+    ? `<span class="shimmer-text">${escapeHtml(statusLabel)}</span><span class="thinking-timer">${elapsed}s</span>`
+    : `<span class="thinking-finished-label">${escapeHtml(finishedLabel)}</span>`
+
+  const chevronSvg = `
+    <svg class="thinking-chevron ${isExpanded ? 'is-expanded' : 'is-collapsed'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="m6 9 6 6 6-6"/>
+    </svg>
+  `
+
+  header.innerHTML = `
+    ${bulbSvg}
+    <div class="thinking-label-wrap">${labelHtml}</div>
+    ${chevronSvg}
+  `
+
+  const body = document.createElement("div")
+  body.className = `thinking-body ${isExpanded ? 'is-expanded' : 'is-collapsed'}`
+
+  const scrollArea = document.createElement("div")
+  scrollArea.className = "thinking-scroll thinking-fade"
+
+  const textP = document.createElement("p")
+  textP.className = "thinking-text"
+
+  if (thoughtText) {
+    const frags = splitFragments(thoughtText)
+    const total = thoughtText.length
+    const ends = []
+    frags.reduce((acc, f) => {
+      const next = acc + f.length
+      ends.push(next)
+      return next
+    }, 0)
+
+    frags.forEach((frag, i) => {
+      const span = document.createElement("span")
+      span.className = "thinking-frag"
+      span.textContent = frag
+      span.style.opacity = isThinking ? trailOpacity(total - ends[i]) : 0.5
+      textP.appendChild(span)
+    })
+  }
+
+  if (isThinking) {
+    const cursor = document.createElement("span")
+    cursor.className = "cursor-blink"
+    cursor.textContent = "▍"
+    textP.appendChild(cursor)
+  }
+
+  scrollArea.appendChild(textP)
+  body.appendChild(scrollArea)
+
+  header.addEventListener("click", () => {
+    const willExpand = body.classList.contains("is-collapsed")
+    body.classList.toggle("is-collapsed", !willExpand)
+    body.classList.toggle("is-expanded", willExpand)
+    const chev = header.querySelector(".thinking-chevron")
+    if (chev) {
+      chev.classList.toggle("is-collapsed", !willExpand)
+      chev.classList.toggle("is-expanded", willExpand)
+    }
+    header.setAttribute("aria-expanded", willExpand ? "true" : "false")
+    message.isThinkingExpanded = willExpand
+  })
+
+  container.appendChild(header)
+  if (thoughtText || isThinking) {
+    container.appendChild(body)
+  }
+
+  if (isThinking && scrollArea) {
+    requestAnimationFrame(() => {
+      scrollArea.scrollTop = scrollArea.scrollHeight
+    })
+  }
+
+  return container
+}
+
 function renderAssistantContent(content, streaming = false) {
   const wrapper = document.createElement("div")
   wrapper.className = "assistant-content"
@@ -304,7 +464,12 @@ function renderMessage(message, isLast = false) {
   const bubble = row.querySelector(".message-bubble")
 
   if (message.role === "assistant") {
-    if (message.content) bubble.appendChild(renderAssistantContent(message.content, state.isGenerating && isLast))
+    if (message.phase === "thinking" || message.thought || message.thoughtSeconds) {
+      bubble.appendChild(createThinkingBubble(message, state.isGenerating && isLast))
+    }
+    if (message.content) {
+      bubble.appendChild(renderAssistantContent(message.content, state.isGenerating && isLast))
+    }
     if (message.error) {
       const error = document.createElement("div")
       error.className = "error-bubble"
@@ -324,16 +489,6 @@ function renderMessage(message, isLast = false) {
       bubble.appendChild(text)
     }
   }
-  return row
-}
-
-function renderThinking() {
-  const row = document.createElement("article")
-  row.className = "thinking-row"
-  row.innerHTML = `
-    <div class="avatar echo"><img src="/assets/echo-skull.jpg" alt="ECHO" /></div>
-    <div class="thinking-bubble"><span class="thinking-halo"></span><span>A processar</span><span class="thinking-eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><span class="thinking-dots" aria-hidden="true"></span></div>
-  `
   return row
 }
 
@@ -360,10 +515,8 @@ function renderMessages() {
   const list = document.createElement("div")
   list.className = "message-list"
   chat.messages.forEach((message, index) => {
-    const isEmptyGeneratingAssistant = state.isGenerating && message.role === "assistant" && !message.content && index === chat.messages.length - 1
-    if (!isEmptyGeneratingAssistant) list.appendChild(renderMessage(message, index === chat.messages.length - 1))
+    list.appendChild(renderMessage(message, index === chat.messages.length - 1))
   })
-  if (state.isGenerating) list.appendChild(renderThinking())
   els.messages.appendChild(list)
   requestAnimationFrame(() => {
     if (state.autoScroll) scrollToBottomIfNeeded()
@@ -513,7 +666,7 @@ function apiMessages(chat) {
   return selected
 }
 
-async function consumeStream(response, onToken) {
+async function consumeStream(response, onChunk) {
   const reader = response.body?.getReader()
   if (!reader) throw new Error("Não foi possível responder agora.")
   const decoder = new TextDecoder()
@@ -532,8 +685,13 @@ async function consumeStream(response, onToken) {
         if (!raw || raw === "[DONE]") continue
         try {
           const packet = JSON.parse(raw)
-          const delta = packet.choices?.[0]?.delta?.content ?? packet.choices?.[0]?.message?.content ?? ""
-          if (delta) { received = true; onToken(delta) }
+          const delta = packet.choices?.[0]?.delta || {}
+          const content = delta.content || ""
+          const reasoning = delta.reasoning_content || ""
+          if (content || reasoning) {
+            received = true
+            onChunk({ content, reasoning })
+          }
         } catch { /* alguns servidores enviam comentários SSE entre os tokens */ }
       }
     }
@@ -541,21 +699,138 @@ async function consumeStream(response, onToken) {
   return received
 }
 
-function updateAssistantInPlace(messageId, content) {
+function updateExistingThinkingBubble(container, message) {
+  const isThinking = message.phase === "thinking"
+  const elapsed = message.thoughtSeconds || 0
+  const thoughtText = message.thought || ""
+  const isExpanded = message.isThinkingExpanded !== false && (isThinking || Boolean(message.isThinkingExpanded))
+
+  const bulb = container.querySelector(".bulb-icon")
+  if (bulb) {
+    bulb.setAttribute("class", `bulb-icon ${isThinking ? 'bulb-glow' : ''}`)
+    bulb.setAttribute("fill", isThinking ? 'currentColor' : 'none')
+    bulb.setAttribute("stroke-width", isThinking ? '1.5' : '2')
+  }
+
+  const labelWrap = container.querySelector(".thinking-label-wrap")
+  if (labelWrap) {
+    const statusLabel = message.statusLabel || "Thinking..."
+    const finishedLabel = message.doneLabel || `Thought for ${elapsed}s`
+    container.classList.toggle("is-live", isThinking)
+    const timerEl = labelWrap.querySelector(".thinking-timer")
+    if (isThinking && timerEl && labelWrap.querySelector(".shimmer-text")) {
+      timerEl.textContent = `${elapsed}s`
+    } else {
+      labelWrap.innerHTML = isThinking
+        ? `<span class="shimmer-text">${escapeHtml(statusLabel)}</span><span class="thinking-timer">${elapsed}s</span>`
+        : `<span class="thinking-finished-label">${escapeHtml(finishedLabel)}</span>`
+    }
+  }
+
+  const chev = container.querySelector(".thinking-chevron")
+  if (chev) {
+    chev.classList.toggle("is-collapsed", !isExpanded)
+    chev.classList.toggle("is-expanded", isExpanded)
+  }
+
+  let body = container.querySelector(".thinking-body")
+  if (!body && (thoughtText || isThinking)) {
+    body = document.createElement("div")
+    body.className = `thinking-body ${isExpanded ? 'is-expanded' : 'is-collapsed'}`
+    const scrollArea = document.createElement("div")
+    scrollArea.className = "thinking-scroll thinking-fade"
+    const textP = document.createElement("p")
+    textP.className = "thinking-text"
+    scrollArea.appendChild(textP)
+    body.appendChild(scrollArea)
+    container.appendChild(body)
+  }
+
+  if (body) {
+    body.className = `thinking-body ${isExpanded ? 'is-expanded' : 'is-collapsed'}`
+    const textP = body.querySelector(".thinking-text")
+    const scrollArea = body.querySelector(".thinking-scroll")
+    if (textP) {
+      textP.innerHTML = ""
+      if (thoughtText) {
+        const frags = splitFragments(thoughtText)
+        const total = thoughtText.length
+        const ends = []
+        frags.reduce((acc, f) => {
+          const next = acc + f.length
+          ends.push(next)
+          return next
+        }, 0)
+        frags.forEach((frag, i) => {
+          const span = document.createElement("span")
+          span.className = "thinking-frag"
+          span.textContent = frag
+          span.style.opacity = isThinking ? trailOpacity(total - ends[i]) : 0.65
+          textP.appendChild(span)
+        })
+      }
+      if (isThinking) {
+        const cursor = document.createElement("span")
+        cursor.className = "cursor-blink"
+        cursor.textContent = "▍"
+        textP.appendChild(cursor)
+      }
+      if (scrollArea && isThinking) {
+        scrollArea.scrollTop = scrollArea.scrollHeight
+      }
+    }
+  }
+}
+
+function updateAssistantInPlace(messageId) {
+  const message = activeChat().messages.find((item) => item.id === messageId)
+  if (!message) return
   let row = document.querySelector(`[data-message-id="${messageId}"]`)
   if (!row) {
     const list = els.messages.querySelector(".message-list")
-    const message = activeChat().messages.find((item) => item.id === messageId)
-    if (!list || !message) return
-    els.messages.querySelector(".thinking-row")?.remove()
+    if (!list) return
     row = renderMessage(message, true)
     list.appendChild(row)
-  } else {
-    els.messages.querySelector(".thinking-row")?.remove()
   }
   const bubble = row.querySelector(".message-bubble")
-  bubble.innerHTML = ""
-  bubble.appendChild(renderAssistantContent(content, true))
+  if (!bubble) return
+
+  // Manage ThinkingBubble
+  let thinkingEl = bubble.querySelector(".thinking-container")
+  if (message.phase === "thinking" || message.thought || message.thoughtSeconds) {
+    if (thinkingEl) {
+      updateExistingThinkingBubble(thinkingEl, message)
+    } else {
+      const newThinkingEl = createThinkingBubble(message, state.isGenerating)
+      bubble.prepend(newThinkingEl)
+    }
+  } else if (thinkingEl && !message.thought && !message.thoughtSeconds) {
+    thinkingEl.remove()
+  }
+
+  // Manage Assistant Answer
+  let contentEl = bubble.querySelector(".assistant-content")
+  if (message.content) {
+    const newContentEl = renderAssistantContent(message.content, state.isGenerating)
+    if (contentEl) {
+      contentEl.replaceWith(newContentEl)
+    } else {
+      bubble.appendChild(newContentEl)
+    }
+  } else if (contentEl) {
+    contentEl.remove()
+  }
+
+  if (message.error) {
+    let errEl = bubble.querySelector(".error-bubble")
+    if (!errEl) {
+      errEl = document.createElement("div")
+      errEl.className = "error-bubble"
+      bubble.appendChild(errEl)
+    }
+    errEl.textContent = message.error
+  }
+
   scrollToBottomIfNeeded()
 }
 
@@ -572,8 +847,18 @@ async function sendMessage() {
   const userMessage = { id: uid("message"), role: "user", content: prompt, attachments }
   chat.messages.push(userMessage)
   if (chat.messages.length === 1) chat.title = titleFromMessage(userMessage.content)
-  const assistantMessage = { id: uid("message"), role: "assistant", content: "" }
+
+  const assistantMessage = {
+    id: uid("message"),
+    role: "assistant",
+    content: "",
+    thought: "",
+    phase: "thinking",
+    thoughtSeconds: 0,
+    isThinkingExpanded: true,
+  }
   chat.messages.push(assistantMessage)
+
   const generationId = uid("generation")
   state.isGenerating = true
   state.generationId = generationId
@@ -583,27 +868,74 @@ async function sendMessage() {
   autoResize()
   saveState()
   renderAll()
+
+  let thinkingSeconds = 0
+  const thinkingInterval = setInterval(() => {
+    if (assistantMessage.phase === "thinking") {
+      thinkingSeconds++
+      assistantMessage.thoughtSeconds = thinkingSeconds
+      if (state.generationId === generationId && state.activeChatId === chat.id) {
+        updateAssistantInPlace(assistantMessage.id)
+      }
+    } else {
+      clearInterval(thinkingInterval)
+    }
+  }, 1000)
+
   const messages = apiMessages(chat)
 
   try {
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: modelToUse, chatId: chat.id, contextId: chat.contextId, messages, stream: true, temperature: 0.7, max_tokens: 40000 }),
+      body: JSON.stringify({ model: modelToUse, chatId: chat.id, contextId: chat.contextId, messages, stream: true, temperature: 0.7, max_tokens: 2048 }),
       signal: state.controller.signal,
     })
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}))
       throw new Error("Não foi possível responder agora.")
     }
-    let content = ""
-    const received = await consumeStream(response, (token) => {
-      content += token
-      assistantMessage.content = content
-      if (state.generationId === generationId && state.activeChatId === chat.id) updateAssistantInPlace(assistantMessage.id, content)
+
+    let rawThought = ""
+    let rawContent = ""
+    const received = await consumeStream(response, ({ content, reasoning }) => {
+      if (reasoning) {
+        rawThought += reasoning
+        assistantMessage.thought = rawThought
+        assistantMessage.phase = "thinking"
+        assistantMessage.isThinkingExpanded = true
+      }
+
+      if (content) {
+        rawContent += content
+        const parsed = parseThoughtAndAnswer(rawContent)
+        if (parsed.thought) {
+          assistantMessage.thought = (rawThought ? rawThought + "\n" : "") + parsed.thought
+        }
+
+        if (parsed.isStillThinking) {
+          assistantMessage.phase = "thinking"
+          assistantMessage.isThinkingExpanded = true
+        } else {
+          if (assistantMessage.phase === "thinking") {
+            assistantMessage.phase = "done"
+            clearInterval(thinkingInterval)
+            assistantMessage.thoughtSeconds = Math.max(1, thinkingSeconds)
+            assistantMessage.doneLabel = `Thought for ${assistantMessage.thoughtSeconds}s`
+            assistantMessage.isThinkingExpanded = false
+          }
+          assistantMessage.content = parsed.answer || rawContent
+        }
+      }
+
+      if (state.generationId === generationId && state.activeChatId === chat.id) {
+        updateAssistantInPlace(assistantMessage.id)
+      }
     })
-    if (!received && !content) content = "Não foi possível responder agora."
-    assistantMessage.content = content
+
+    if (!received && !assistantMessage.content) {
+      assistantMessage.content = "Não foi possível responder agora."
+    }
   } catch (error) {
     if (error?.name === "AbortError") {
       assistantMessage.content = assistantMessage.content || "Geração interrompida."
@@ -613,6 +945,13 @@ async function sendMessage() {
       showToast("Não foi possível responder agora.")
     }
   } finally {
+    clearInterval(thinkingInterval)
+    if (assistantMessage.phase === "thinking") {
+      assistantMessage.phase = "done"
+      assistantMessage.thoughtSeconds = Math.max(1, thinkingSeconds)
+      assistantMessage.doneLabel = `Thought for ${assistantMessage.thoughtSeconds}s`
+      assistantMessage.isThinkingExpanded = false
+    }
     saveState()
     if (state.generationId !== generationId) return
     state.isGenerating = false
