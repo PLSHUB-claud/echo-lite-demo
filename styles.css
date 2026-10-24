@@ -47,7 +47,15 @@ svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width:
   .sidebar { overflow: hidden; transition: width var(--motion-base) var(--ease), flex-basis var(--motion-base) var(--ease), border-color var(--motion-base) ease; }
   .app-shell.sidebar-collapsed .sidebar { width: 0; flex-basis: 0; border-right-color: transparent; }
 }
-.sidebar-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 22px 18px 18px; }
+/* Angel Heraldic Brand Lockup */
+.sidebar-head { position: relative; display: flex; align-items: center; justify-content: center; padding: 14px 12px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+.angel-brand-lockup { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; max-width: 252px; cursor: pointer; user-select: none; transition: transform var(--motion-fast) var(--ease), filter var(--motion-fast) var(--ease); }
+.angel-brand-lockup:hover { transform: translateY(-2px) scale(1.02); filter: drop-shadow(0 6px 20px rgba(255, 230, 200, 0.16)); }
+.angel-brand-lockup:active { transform: scale(0.98); }
+.angel-brand-img { display: block; width: 100%; height: auto; aspect-ratio: 1005 / 583; object-fit: contain; pointer-events: none; filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.5)); }
+.angel-banner-text { position: absolute; top: 58.2%; left: 52.8%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; justify-content: center; width: 74%; pointer-events: none; user-select: none; text-align: center; }
+.angel-title { font-family: 'Cinzel', 'Times New Roman', 'Palatino Linotype', Georgia, serif; font-size: 16px; font-weight: 900; letter-spacing: 0.24em; padding-left: 0.24em; color: #12100d; line-height: 1; text-transform: uppercase; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5); }
+.angel-subtitle { font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 7.5px; font-weight: 800; letter-spacing: 0.34em; padding-left: 0.34em; color: #44382c; line-height: 1; margin-top: 2px; text-transform: uppercase; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35); }
 .brand-lockup { display: flex; align-items: center; gap: 11px; min-width: 0; }
 .brand-mark { display: grid; width: 34px; height: 34px; place-items: center; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.3); background: #090a0e; box-shadow: 0 0 24px rgba(255, 255, 255, 0.08); }
 .brand-mark img { width: 100%; height: 100%; object-fit: cover; filter: saturate(0.72) contrast(1.1); }

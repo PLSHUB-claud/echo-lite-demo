@@ -6,17 +6,20 @@
     <meta name="theme-color" content="#0b0c10" />
     <title>ECHO â€” PLSHUB</title>
     <link rel="icon" href="/assets/echo-skull.jpg" />
-    <link rel="stylesheet" href="/styles.css?v=6" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css?v=7" />
   </head>
   <body>
     <div class="app-shell">
       <aside class="sidebar" id="sidebar" aria-label="ECHO PLSHUB">
         <div class="sidebar-head">
-          <div class="brand-lockup">
-            <div class="brand-mark"><img src="/assets/echo-skull.jpg" alt="ECHO" /></div>
-            <div>
-              <div class="brand-name">ECHO</div>
-              <div class="brand-subtitle">PLSHUB</div>
+          <div class="angel-brand-lockup" id="angel-brand" title="ECHO — PLSHUB">
+            <img src="/assets/anjo-transparent.png" alt="ECHO PLSHUB" class="angel-brand-img" />
+            <div class="angel-banner-text">
+              <span class="angel-title">ECHO</span>
+              <span class="angel-subtitle">PLSHUB</span>
             </div>
           </div>
           <button class="icon-button sidebar-close" id="sidebar-close" type="button" aria-label="Fechar painel"></button>
@@ -62,7 +65,7 @@
           <form class="composer" id="composer">
             <div class="composer-main">
               <button class="composer-tool" id="attach-file" type="button" aria-label="Adicionar imagem"></button>
-              <textarea id="message-input" rows="1" placeholder="Escreve uma mensagemâ€¦" aria-label="Mensagem"></textarea>
+              <textarea id="message-input" rows="1" placeholder="Escreva uma mensagem..." uma mensagemâ€¦" aria-label="Mensagem"></textarea>
               <button class="send-button" id="send-button" type="submit" aria-label="Enviar mensagem"></button>
             </div>
             <div class="composer-foot">
@@ -75,7 +78,7 @@
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="/app.js?v=6" defer></script>
+    <script src="/app.js?v=7" defer></script>
   </body>
 </html>
 

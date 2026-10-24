@@ -987,6 +987,7 @@ async function refreshModels() {
 }
 
 els.newChat.addEventListener("click", createNewChat)
+  document.querySelector("#angel-brand")?.addEventListener("click", createNewChat)
 els.sidebarToggle.addEventListener("click", () => toggleSidebar(els.appShell.classList.contains("sidebar-collapsed")))
 els.sidebarClose.addEventListener("click", () => toggleSidebar(false))
 els.sidebarScrim.addEventListener("click", () => toggleSidebar(false))
