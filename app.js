@@ -888,7 +888,7 @@ async function sendMessage() {
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: modelToUse, chatId: chat.id, contextId: chat.contextId, messages, stream: true, temperature: 0.7, max_tokens: 2048 }),
+      body: JSON.stringify({ model: modelToUse, chatId: chat.id, contextId: chat.contextId, messages, stream: true, temperature: 0.7, max_tokens: 16384 }),
       signal: state.controller.signal,
     })
     if (!response.ok) {
