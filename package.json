@@ -1,0 +1,12 @@
+{
+  "name": "echo-chat-web",
+  "version": "1.0.0",
+  "description": "ECHO Chat Web - PLSHUB",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
